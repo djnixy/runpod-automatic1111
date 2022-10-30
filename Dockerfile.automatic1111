@@ -1,0 +1,60 @@
+FROM pytorch/pytorch:latest
+
+# Make RUN commands use `bash --login`:
+SHELL ["/bin/bash", "--login", "-c"]
+
+RUN apt update
+RUN apt install git curl wget -y
+
+RUN apt-get update -yq \
+    && apt-get -yq install curl gnupg ca-certificates \
+    && curl -L https://deb.nodesource.com/setup_12.x | bash \
+    && apt-get update -yq \
+    && apt-get install -yq \
+        nodejs
+
+
+RUN npm install -g localtunnel
+
+WORKDIR /app
+
+RUN git clone https://github.com/CompVis/stable-diffusion.git
+WORKDIR /app/stable-diffusion
+
+RUN conda env create -f environment.yaml
+COPY webui.py ./
+RUN mkdir models/ldm/stable-diffusion-v1/
+RUN mkdir embeddings
+RUN apt install wget -y
+RUN wget -P embeddings/ url-to-my-emmbeding.pt
+
+
+COPY sd-v1-4.ckpt /app/stable-diffusion/models/ldm/stable-diffusion-v1/model.ckpt
+
+
+SHELL ["conda", "run", "-n", "ldm", "/bin/bash", "-c"]
+
+RUN git clone https://github.com/TencentARC/GFPGAN.git
+WORKDIR /app/stable-diffusion/GFPGAN
+RUN pip install -r requirements.txt
+RUN wget -P experiments/pretrained_models/ https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth
+
+
+
+WORKDIR /app/stable-diffusion/
+RUN pip install opencv-python
+RUN apt update && apt install -y libsm6 libxext6
+RUN apt-get install -y libxrender-dev
+RUN pip install realesrgan
+
+RUN pip install gradio
+RUN pip install git+https://github.com/crowsonkb/k-diffusion/
+
+
+RUN mkdir outputs
+RUN mkdir outputs/txt2img-samples
+RUN mkdir outputs/img2img-samples
+RUN mkdir outputs/extras-samples
+RUN mkdir outputs/txt2img-samples/samples
+RUN mkdir outputs/img2img-samples/samples
+RUN mkdir outputs/extras-samples/samples
